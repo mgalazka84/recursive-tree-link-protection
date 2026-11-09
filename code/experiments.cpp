@@ -1,5 +1,5 @@
 // Reproduction program for The value of topology information for link protection.
-// Compile with a C++17 compiler. See README.md for the four modes.
+// Compile with a C++17 compiler. See README.md for the experimental modes.
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -136,6 +136,78 @@ void finite_runs(bool pilot) {
     finite_case(1024,2,2500,20261114,k);
 }
 
+void preferential_tree(Parents& parent, std::mt19937& rng, std::vector<int>& tickets) {
+    // A site owns one ticket for itself and one for each child.
+    tickets.clear();
+    tickets.push_back(0);
+    for (int child = 1; child < int(parent.size()); ++child) {
+        const int chosen = tickets[below(rng, uint32_t(tickets.size()))];
+        parent[child] = chosen;
+        tickets.push_back(chosen);
+        tickets.push_back(child);
+    }
+}
+
+double expected_preferential_oldest(int n, double p) {
+    double expected_weight = 1;
+    for (int t = 2; t < n; ++t)
+        expected_weight += ((1 + p) * expected_weight - 1) / (2*t - 1);
+    return (1-p) * expected_weight;
+}
+
+void sensitivity_case(int n, int samples, bool preferential, uint32_t seed) {
+    const Values failure{0.1, 0.2, 0.5, 1/std::log(n)};
+    const std::vector<std::string> regimes{"fixed", "fixed", "fixed", "critical"};
+    std::vector<Moments> full(failure.size()), oldest(failure.size());
+    std::vector<Moments> partial(failure.size()), residual(failure.size());
+    Parents parent(n);
+    std::vector<int> sizes(n), branches, tickets;
+    if (preferential) tickets.reserve(2*n-1);
+    std::mt19937 rng(seed);
+
+    for (int draw = 0; draw < samples; ++draw) {
+        if (preferential) preferential_tree(parent,rng,tickets);
+        else random_tree(parent,rng);
+        std::fill(sizes.begin(), sizes.end(), 1);
+        for (int j = n-1; j >= 1; --j) sizes[parent[j]] += sizes[j];
+        branches.clear();
+        for (int j = 1; j < n; ++j)
+            if (parent[j] == 0) branches.push_back(j);
+        // Increasing label order selects the oldest in a tie.
+        const int largest = *std::max_element(branches.begin(), branches.end(),
+                             [&](int i,int j){ return sizes[i] < sizes[j]; });
+        for (size_t r = 0; r < failure.size(); ++r) {
+            const double q = failure[r];
+            const Values wt = weights(parent, 1-q);
+            double maximum = 0;
+            for (int j : branches) maximum = std::max(maximum,wt[j]);
+            full[r].add(q*maximum);
+            oldest[r].add(q*wt[1]);
+            partial[r].add(q*wt[largest]);
+            residual[r].add(q*(maximum-wt[largest]));
+        }
+    }
+    for (size_t r = 0; r < failure.size(); ++r) {
+        const double q = failure[r], p = 1-q;
+        const double a = preferential ? expected_preferential_oldest(n,p) : age_exact(n,1,q);
+        std::cout << (preferential ? "preferential" : "uniform") << ',' << regimes[r] << ','
+                  << n << ',' << q << ',' << samples << ',' << seed << ',' << a << ','
+                  << oldest[r].mean << ',' << oldest[r].se() << ',' << full[r].mean << ','
+                  << full[r].se() << ',' << full[r].mean/a << ',' << full[r].se()/a << ','
+                  << partial[r].mean << ',' << residual[r].mean << ',' << residual[r].se() << '\n';
+    }
+}
+
+void sensitivity_runs() {
+    std::cout << "growth,regime,n,q,trees,seed,age_exact,age_sample,age_se,map_mean,map_se,"
+                 "ratio,ratio_se,size_policy_mean,map_minus_size,paired_gap_se\n";
+    const std::vector<std::pair<int,int>> sizes{{128,15000},{1024,10000},{8192,5000},{65536,2500}};
+    for (int model = 0; model <= 1; ++model) {
+        for (size_t i = 0; i < sizes.size(); ++i)
+            sensitivity_case(sizes[i].first, sizes[i].second, model!=0, 711901+20*model+i);
+    }
+}
+
 void limiting_runs() {
     constexpr int samples = 20000, cap = 1024;
     constexpr uint32_t seed = 20261115;
@@ -264,5 +336,6 @@ int main(int argc, char** argv) {
     else if (mode=="one") finite_runs(true);
     else if (mode=="finite") finite_runs(false);
     else if (mode=="limit") limiting_runs();
-    else { std::cerr << "Usage: experiments {verify|one|finite|limit}\n"; return 2; }
+    else if (mode=="sensitivity") sensitivity_runs();
+    else { std::cerr << "Usage: experiments {verify|one|finite|limit|sensitivity}\n"; return 2; }
 }
