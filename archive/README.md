@@ -1,17 +1,15 @@
-# Archived computational materials
+# Code and results for the article
 
-The archive contains all 15 tracked files (source, input-free experiments, numerical results and reproduction instructions) from the [computational revision](https://github.com/mgalazka84/recursive-tree-link-protection/commit/aacde39cae7baf8da6114dcbd05010194b6cc204). Its directory has the intrinsic Software Hash Identifier `swh:1:dir:3f82abf5f50e83e629a0f16738f9eeec84085494`. Its compressed bytes have SHA-256 `41568a5b82637d956d2a800970a7619ace3e1a1ddd25e70892c19357906e9ed8`.
+[Download the code and results](./link-protection-code-and-results.tar.gz) for *The value of topology information for link protection in random recursive trees*. The bundle contains the 16 computational files from [revision 66903e22b4858570712db887b280353501a3b996](https://github.com/mgalazka84/recursive-tree-link-protection/commit/66903e22b4858570712db887b280353501a3b996), including the inputs and uncertainty calculations for Table 4. The archive directory itself is excluded.
 
-To verify the directory and reproduce the calculations, download the archive and run:
+The SHA-256 checksum of the compressed file is `8f794a17169451a8bf687615118b1d12413ab979df3ad682046dc0e6fa6d4c85`. From the directory containing the download, run the following commands with GNU Make, a C++17 compiler and Python 3 with matplotlib.
 
 ~~~sh
+sha256sum link-protection-code-and-results.tar.gz
 tar -xzf link-protection-code-and-results.tar.gz
 cd link-protection
-git init -q
-git add -f -- .
-git write-tree
 make verify
 make reproduce
 ~~~
 
-The output of `git write-tree` should be `3f82abf5f50e83e629a0f16738f9eeec84085494`. Compute it before running the build, in a freshly extracted directory. The [SWHID specification](https://www.swhid.org/) describes the persistent, content-derived directory identifier.
+Compare the output of the first command with the checksum above. The last two commands check the exact small-tree cases, write the numerical results to `results/`, and regenerate the three figures in `figures/`.
