@@ -1,6 +1,7 @@
-"""Rebuild the two vector figures from the reported model and CSV files."""
+"""Rebuild the three vector figures from the model, its worked examples and the CSV files."""
 import csv
 import math
+from tempfile import NamedTemporaryFile
 from pathlib import Path
 
 import matplotlib
@@ -26,28 +27,108 @@ def records(name):
                 for row in csv.DictReader(source)]
 
 
+def save_plot(fig, filename, padding):
+    with NamedTemporaryFile(dir=OUT, suffix=".pdf", delete=False) as output:
+        temp = Path(output.name)
+    try:
+        fig.savefig(temp, bbox_inches="tight", pad_inches=padding,
+                    metadata={"CreationDate": None, "ModDate": None})
+        temp.replace(OUT / filename)
+    finally:
+        temp.unlink(missing_ok=True)
+        plt.close(fig)
+
+
+def draw_tree(ax, positions, parents, highlighted, radius):
+    for child, parent in parents.items():
+        a, b = positions[parent], positions[child]
+        chosen = child in highlighted
+        ax.plot([a[0], b[0]], [a[1], b[1]], color="0.13" if chosen else "0.55",
+                lw=3.3 if chosen else 1.15, solid_capstyle="round", zorder=1)
+    for site, (x, y) in positions.items():
+        ax.add_patch(Circle((x, y), radius, facecolor="0.92" if site == 1 else "white",
+                            edgecolor="0.2", lw=0.9, zorder=2))
+        ax.text(x, y, str(site), ha="center", va="center", fontsize=8, zorder=3)
+    ax.set_aspect("equal")
+    ax.axis("off")
+
+
+def root_link_gain(parents, child, reliability):
+    # Protect the root edge ending at child. A site gains only if its path uses that edge.
+    gain = 0.0
+    for site in parents:
+        node, depth = site, 0
+        while parents[node] != 1:
+            node = parents[node]
+            depth += 1
+        if node == child:
+            gain += (1 - reliability) * reliability ** depth
+    return gain
+
+
 def tree_example():
-    pos = {1: (0, 1.8), 2: (-0.92, 0.9), 3: (0.6, 0.9),
-           7: (-0.92, 0.0), 4: (-0.14, 0.0), 5: (0.6, 0.0), 6: (1.34, 0.0)}
-    edges = [(1, 2), (1, 3), (2, 7), (3, 4), (3, 5), (3, 6)]
-    fig, axes = plt.subplots(1, 2, figsize=(6.25, 1.94), layout="constrained")
-    for ax, protected, title in zip(axes, [(1, 2), (1, 3)],
-                                    ["(a) Installation order", "(b) Observed tree"]):
-        for u, v in edges:
-            a, b = pos[u], pos[v]
-            selected = (u, v) == protected
-            ax.plot([a[0], b[0]], [a[1], b[1]],
-                    lw=3.7 if selected else 1.15,
-                    color="0.12" if selected else "0.58", solid_capstyle="round")
-        for label, (x, y) in pos.items():
-            ax.add_patch(Circle((x, y), 0.16, facecolor="0.93" if label==1 else "white",
-                                edgecolor="0.18", lw=0.95, zorder=3))
-            ax.text(x, y, str(label), ha="center", va="center", zorder=4, fontsize=8.2)
-        ax.set(xlim=(-1.43, 1.65), ylim=(-0.24, 2.07), aspect="equal")
-        ax.set_title(title, fontsize=9, pad=3)
-        ax.axis("off")
-    fig.savefig(OUT / "tree_example.pdf", bbox_inches="tight", pad_inches=0.025)
-    plt.close(fig)
+    fig, axes = plt.subplots(1, 2, figsize=(6.65, 2.0), layout="constrained")
+    for ax, larger, panel in zip(axes, (2, 3), ("a", "b")):
+        smaller = 5 - larger
+        parents = {2: 1, 3: 1, 4: larger, 5: larger, 6: larger, 7: smaller}
+        positions = {1: (0, 1.65), 2: (-0.87, 0.77), 3: (0.87, 0.77)}
+        for label, offset in zip((4, 5, 6), (-0.56, 0, 0.56)):
+            positions[label] = (positions[larger][0] + offset, -0.03)
+        positions[7] = (positions[smaller][0], -0.03)
+        gains = {j: root_link_gain(parents, j, 0.8) for j in (2, 3)}
+        best = max(gains, key=gains.get)
+        draw_tree(ax, positions, parents, {best}, radius=0.14)
+        for child in (2, 3):
+            ax.text(positions[child][0], -0.51, f"Link {child}   +{gains[child]:.2f}",
+                    ha="center", va="center", fontsize=8,
+                    weight="bold" if child == best else "normal")
+        ax.set_title(f"({panel}) Relays 4–6 attach to {larger}", fontsize=9, pad=3)
+        ax.set(xlim=(-1.7, 1.7), ylim=(-0.70, 1.87))
+    save_plot(fig, "tree_example.pdf", 0.03)
+
+
+def subtree_thresholds():
+    # Child labels increase along each path. Accumulate finite subtree sizes from the leaves.
+    parents = {2: 1, 3: 1, 4: 2, 5: 2, 6: 4, 7: 4}
+    n = len(parents) + 1
+    sizes = {j: 1 for j in range(1, n + 1)}
+    for child in sorted(parents, reverse=True):
+        sizes[parents[child]] += sizes[child]
+    ranked = sorted(parents, key=sizes.get, reverse=True)
+    top = ranked[:2]
+    fig, (left, right) = plt.subplots(1, 2, figsize=(6.9, 2.35),
+                                     gridspec_kw={"width_ratios": [0.94, 1.06]},
+                                     layout="constrained")
+    positions = {1: (0, 2.56), 2: (-0.55, 1.75), 3: (0.92, 1.75),
+                 4: (-0.91, 0.94), 5: (0.18, 0.94), 6: (-1.30, 0.10), 7: (-0.54, 0.10)}
+    draw_tree(left, positions, parents, set(top), radius=0.145)
+    for child in top:
+        x, y = positions[child]
+        left.text(x - 0.31, y + 0.04, f"{sizes[child]}/{n}", ha="right", va="center", fontsize=8)
+    left.set(xlim=(-1.82, 1.37), ylim=(-0.12, 2.78))
+    left.set_title("(a) Two nested subtrees", fontsize=9, pad=3)
+
+    fractions = [sizes[j] / n for j in parents]
+    breaks = [0, *sorted(set(fractions)), 1]
+    midpoints = [(a + b) / 2 for a, b in zip(breaks, breaks[1:])]
+    counts = [sum(s >= x for s in fractions) for x in midpoints]
+    capped = [min(len(top), count) for count in counts]
+    right.stairs(counts, breaks, baseline=None, color="0.43", linestyle="--",
+                 linewidth=1.4, label="All qualifying subtrees", zorder=4)
+    right.stairs(capped, breaks, fill=True, color="0.84", label="Area for the two largest")
+    right.stairs(capped, breaks, baseline=None, color="0.12", linewidth=1.7)
+    # Included endpoints correspond to the weak threshold in the paper.
+    for x in sorted(set(fractions)):
+        h = sum(s >= x for s in fractions)
+        right.plot(x, h, "o", color="0.4", markersize=3.1, zorder=5)
+        right.plot(x, min(len(top), h), "o", color="0.12", markersize=3.1, zorder=6)
+    right.set(xlim=(0, 1), ylim=(-0.12, 6.7), xlabel="Threshold (fraction of all sites)",
+              ylabel="Number of subtrees", yticks=[0, 1, 2, 4, 6])
+    right.set_xticks(breaks, ["0", "1/7", "3/7", "5/7", "1"])
+    right.tick_params(direction="out", length=3, color="0.4")
+    right.legend(loc="upper right", fontsize=7.2, frameon=False, handlelength=2)
+    right.set_title("(b) Count above each threshold", fontsize=9, pad=3)
+    save_plot(fig, "subtree_thresholds.pdf", 0.035)
 
 
 def budget_figure():
@@ -87,10 +168,10 @@ def budget_figure():
     right.xaxis.set_major_locator(FixedLocator([1, 4, 16, 64, 256, 1024]))
     right.set_ylim(0.09, 0.465)
     right.legend(fontsize=7, loc="lower right", frameon=False, handlelength=2.2)
-    fig.savefig(OUT / "budget_comparison.pdf", bbox_inches="tight", pad_inches=0.025)
-    plt.close(fig)
+    save_plot(fig, "budget_comparison.pdf", 0.025)
 
 
 if __name__ == "__main__":
     tree_example()
+    subtree_thresholds()
     budget_figure()

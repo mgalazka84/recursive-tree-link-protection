@@ -13,14 +13,14 @@ make verify
 make reproduce
 ~~~
 
-The first command checks the optimizer against exhaustive subset enumeration on every recursive tree of size 2 through 8, and checks the service-threshold ordering through size 10. The second command reruns the checks and all experiments, updates the files in `results/` and regenerates both vector figures in `figures/`. Use `make figures` to plot the supplied results directly.
+The first command checks the optimizer against exhaustive subset enumeration on every recursive tree of size 2 through 8, and checks the service-threshold ordering through size 10. The second command reruns the checks and all experiments, updates the files in `results/` and regenerates all three vector figures in `figures/`. Use `make figures` to plot the supplied results directly.
 
 ## Files and experiments
 
 | File | Contents |
 |---|---|
 | `code/experiments.cpp` | C++ simulation, exact conditional optimizer, exhaustive checks and limiting mass sampler |
-| `code/figures.py` | Python script for the network example and budget comparison |
+| `code/figures.py` | Python script for the two possible relay maps, the subtree-threshold example and the budget comparison |
 | `results/verification.txt` | Enumeration counts and maximum numerical discrepancies |
 | `results/single_link.csv` | 40,000 independent trees of size 10,000, one protected link, failure probability 1/log(10,000) |
 | `results/finite_budgets.csv` | 35 combinations of network size, failure probability and budget |
