@@ -35,3 +35,7 @@ The sensitivity runs use independent trees for each size and growth rule. Within
 For the fixed-risk limits, `code/diagnostics.py` uses the recorded finite-tree ratios and their standard errors. The deterministic bound is one-sided: the finite-network ratio increases to the limiting ratio. The last two columns combine sampling uncertainty (1.96 standard errors on either side of the empirical ratio) with this bound on the upper end. The intervals apply to each risk separately.
 
 The executable also accepts `verify`, `one`, `finite`, `limit` and `sensitivity` as individual modes. Each writes its output to standard output. The seeds are fixed in the source and recorded in the CSV files. The map gain is averaged over independent trees. The age-based denominator is computed analytically. No external data are needed.
+
+## Code license
+
+The authors license the C++ and Python source files in `code/` and the root `Makefile` under the [MIT License](LICENSE). This includes the same files in the [computational revision used for the article](https://github.com/mgalazka84/recursive-tree-link-protection/commit/66903e22b4858570712db887b280353501a3b996).

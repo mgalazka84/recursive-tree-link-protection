@@ -2,6 +2,7 @@ cff-version: 1.2.0
 message: "Please cite these computational materials when using the code or results."
 title: "Reproduction code for The value of topology information for link protection in random recursive trees"
 type: software
+license: MIT
 authors:
   - given-names: Marek
     family-names: Gałązka
