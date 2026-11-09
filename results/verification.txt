@@ -1,0 +1,6 @@
+recursive_trees=5913
+probability_tree_subset_evaluations=2086446
+tail_comparisons=27648
+max_direct_error=3.885780586188e-15
+max_age_expectation_error=2.353672812205e-14
+max_tail_violation=5.551115123126e-16
