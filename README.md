@@ -27,8 +27,11 @@ The first command checks the optimizer against exhaustive subset enumeration on 
 | `results/limiting_constants.csv` | Direct estimates for 11 budgets, using 20,000 independent limiting trees |
 | `results/one_link_sensitivity.csv` | Two growth rules, three constant failure risks and a critical risk, at four sizes from 128 to 65,536 |
 | `code/diagnostics.py`, `results/normalizations.csv` | Compares finite and limiting gains at each budget using both the exact finite baseline and its large-network approximation |
+| `results/fixed_risk_limits.csv` | Finite-size error bounds and approximate pointwise intervals for the limiting uniform-tree one-link ratios at fixed risk |
 | `code/check_preferential.py`, `results/preferential_verification.txt` | Exhaustive, probability-weighted check of the preferential one-link optimum and its exact denominator |
 
 The sensitivity runs use independent trees for each size and growth rule. Within a draw we reuse the same tree across risks and compare the fully informed one-link choice with protecting the largest branch at the root by vertex count (earliest label breaks ties). The `paired_gap_se` column is the standard error of the within-tree difference between those choices. The exact oldest-link mean supplies the ratio denominator under either growth rule. In `normalizations.csv` a zero limiting standard error at budget one denotes the analytic Golomb–Dickman constant. For larger budgets the limiting comparison is a separate estimate based on 20,000 draws.
+
+For the fixed-risk limits, `code/diagnostics.py` uses the recorded finite-tree ratios and their standard errors. The deterministic bound is one-sided: the finite-network ratio increases to the limiting ratio. The last two columns combine sampling uncertainty (1.96 standard errors on either side of the empirical ratio) with this bound on the upper end. The intervals apply to each risk separately.
 
 The executable also accepts `verify`, `one`, `finite`, `limit` and `sensitivity` as individual modes. Each writes its output to standard output. The seeds are fixed in the source and recorded in the CSV files. The map gain is averaged over independent trees. The age-based denominator is computed analytically. No external data are needed.
